@@ -1,45 +1,26 @@
-# # Use an official lightweight Python image as base
-# FROM python:3.10-slim
-
-# # Update package list, install curl, install PDM (Python Development Master), and clean up
-# RUN apt-get update && apt-get install -y curl \
-#   && curl -sSL https://pdm.fming.dev/install-pdm.py | python3 - \
-#   && apt-get clean
-
-# # Set working directory inside the container
-# WORKDIR /app
-
-# # Copy project files from the host to the container
-# COPY . .
-
-# ENV PATH="/root/.local/bin:$PATH"
-
-# # Install only production dependencies using PDM
-# RUN pdm install --prod
-
-# # Expose port 8002 for external access
-# EXPOSE 8002
-
-# CMD ["pdm", "run", "python", "app.py"]
-
-# Use official Python image
 FROM python:3.10-slim
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y curl \
-  && apt-get clean
+RUN apt-get update && apt-get install -y build-essential curl \
+    && apt-get clean
 
-# Install uv (Python process manager like uvicorn + virtualenv)
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+# Install uv globally
+RUN pip install --no-cache-dir uv
 
 # Set working directory
 WORKDIR /app
 
-# Copy application files
+# Copy all app files
 COPY . .
 
-# Expose the service port
-EXPOSE 8002
+# Create a virtual environment
+RUN uv venv .venv
 
-# Run the service using uv
+# Compile and install dependencies using global uv
+RUN uv pip compile pyproject.toml -o requirements.txt && \
+    uv pip install -r requirements.txt
+
+# Run the app using uv from the global install (still respects .venv)
 CMD ["uv", "run", "app.py"]
+
+EXPOSE 8002
